@@ -6,6 +6,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/sirupsen/logrus"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type TabunganRepoInterface interface {
@@ -26,34 +27,34 @@ type TabunganRepoInterface interface {
 
 type TabunganRepo struct {
 	db  *sqlx.DB
-	log *logrus.Entry
+	log *logrus.Logger
 }
 
 func (t *TabunganRepo) initDatabase() {
 	SQL := `CREATE TABLE IF NOT EXISTS nasabah (
-		nik text PRIMARY KEY
-		nama text
-		alamat_ktp text
-		alamat_domisili text
-		jenis_kelamin text
-		tanggal_lahir text
-		foto_id text
+		nik text PRIMARY KEY,
+		nama text,
+		alamat_ktp text,
+		alamat_domisili text,
+		jenis_kelamin text,
+		tanggal_lahir text,
+		foto_id text,
 		dokumen_id text);`
 	t.db.MustExec(SQL)
 
 	SQL = `CREATE TABLE IF NOT EXISTS rekening (
-		nik text
-		no_rekening text PRIMARY KEY
+		nik text,
+		no_rekening text PRIMARY KEY,
 		saldo real);`
 	t.db.MustExec(SQL)
 
 	SQL = `CREATE TABLE IF NOT EXISTS mutasi (
-		transaksi_id text PRIMARY KEY
-		waktu text
-		jenis_mutasi text
-		no_rekening text
-		nominal real
-		saldo_awal real
+		transaksi_id text PRIMARY KEY,
+		waktu text,
+		jenis_mutasi text,
+		no_rekening text,
+		nominal real,
+		saldo_awal real,
 		saldo_akhir text);`
 	t.db.MustExec(SQL)
 }
@@ -164,4 +165,18 @@ func (t *TabunganRepo) TarikDana(noRekening string, nominal float64) (err error)
 
 func (t *TabunganRepo) SetorDana(noRekening string, nominal float64) (err error) {
 	panic("not implemented") // TODO: Implement
+}
+
+func InitDatabase(database string, logger *logrus.Logger) (repo *TabunganRepo) {
+	db, err := sqlx.Connect("sqlite3", database)
+	if err != nil {
+		panic(err)
+	}
+
+	repo = &TabunganRepo{
+		db: db,
+		log: logger,
+	}
+	repo.initDatabase()
+	return
 }
