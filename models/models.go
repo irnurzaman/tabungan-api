@@ -9,7 +9,7 @@ type Nasabah struct {
 	AlamatDomisili string    `json:"alamat_domisili" db:"alamat_domisili"`
 	JenisKelamin   string    `json:"jenis_kelamin" db:"jenis_kelamin"`
 	TanggalLahir   time.Time `json:"tanggal_lahir" db:"tanggal_lahir"`
-	PhotoID        string    `json:"photo_id" db:"photo_id"`
+	FotoID         string    `json:"foto_id" db:"foto_id"`
 	DokumenID      string    `json:"dokumen_id" db:"dokumen_id"`
 }
 
