@@ -17,7 +17,7 @@ type TabunganRepoInterface interface {
 	SaveDokumen(nik string, dokumenID string) (err error)
 	InsertRekening(rekening models.Rekening) (err error)
 	GetDaftarRekening(nik string) (rekening []models.Rekening, err error)
-	GetRekening(nik string) (rekening models.Rekening, err error)
+	GetRekening(noRekening string) (rekening models.Rekening, err error)
 	InsertMutasi(mutasi models.Mutasi) (err error)
 	GetMutasi(noRekening string, page int, show int) (mutasi []models.Mutasi)
 	TarikDana(noRekening string, nominal float64) (err error)
@@ -86,11 +86,30 @@ func (t *TabunganRepo) InsertNasabah(tx *sqlx.Tx, nasabah models.Nasabah) (err e
 }
 
 func (t *TabunganRepo) GetNasabah(nik string) (nasabah models.Nasabah, err error) {
-	panic("not implemented") // TODO: Implement
+	SQL := "SELECT * FROM nasabah WHERE nik = $1"
+	err = t.db.Get(&nasabah, SQL, nik)
+	if err != nil {
+		t.log.WithFields(logrus.Fields{
+			"nik":     nik,
+			"error":   err.Error(),
+		}).Error("get nasabah error")
+	}
+	return
 }
 
 func (t *TabunganRepo) UpdateNasabah(nasabah models.Nasabah) (err error) {
-	panic("not implemented") // TODO: Implement
+	SQL := "UPDATE nasabah SET nama = :nama, alamat_ktp = :alamat_ktp, alamat_domisili = :alamat_domisili WHERE nik = :nik"
+	_, err = t.db.NamedExec(SQL, nasabah)
+	if err != nil {
+		t.log.WithFields(logrus.Fields{
+			"nik":     nasabah.NIK,
+			"nama": nasabah.Nama,
+			"alamat_ktp": nasabah.AlamatKTP,
+			"alamat_domisili": nasabah.AlamatDomisili,
+			"error":   err.Error(),
+		}).Error("update data nasabah error")
+	}
+	return
 }
 
 func (t *TabunganRepo) SaveFoto(nik string, fotoID string) (err error) {
