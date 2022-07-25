@@ -91,3 +91,10 @@ func genNoRekening() (noRekening string) {
 	noRekening = strconv.Itoa(10000000 + rand.Intn(89999999))
 	return
 }
+
+func NewTabunganApp(repo repository.TabunganRepoInterface, log *logrus.Logger) (app *TabunganApp) {
+	return &TabunganApp{
+		repo: repo,
+		log: log,
+	}
+}

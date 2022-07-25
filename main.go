@@ -2,6 +2,7 @@ package main
 
 import (
 	"tabungan-api/repository"
+	"tabungan-api/app"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -19,5 +20,6 @@ func main() {
 	if database = viper.GetString("DATABASE"); database == "" {
 		database = "tabungan.db"
 	}
-	db := repository.InitDatabase(database, logger)
+	repo := repository.InitDatabase(database, logger)
+	app := app.NewTabunganApp(repo, logger)
 }
