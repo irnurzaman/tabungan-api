@@ -11,7 +11,7 @@ import (
 )
 
 type TabunganAppInterface interface {
-	RegistrasiNasabah(nasabah models.Nasabah) (err error)
+	RegistrasiNasabah(nasabah models.Nasabah) (rekening models.Rekening, err error)
 	PembukaanRekening(nik string) (rekening models.Rekening, err error)
 	GetNasabah(nik string) (nasabah models.Nasabah, err error)
 	GetDaftarRekening(nik string) (rekening []models.Rekening, err error)
@@ -25,7 +25,7 @@ type TabunganApp struct {
 	log *logrus.Logger
 }
 
-func (t *TabunganApp) RegistrasiNasabah(nasabah models.Nasabah) (err error) {
+func (t *TabunganApp) RegistrasiNasabah(nasabah models.Nasabah) (rekening models.Rekening, err error) {
 	err = t.repo.InsertNasabah(nasabah)
 	if err != nil {
 		err = fmt.Errorf("registrasi nasabah gagal")
@@ -39,7 +39,7 @@ func (t *TabunganApp) RegistrasiNasabah(nasabah models.Nasabah) (err error) {
 		}).Warn(err.Error())
 		return
 	}
-	rekening, err := t.PembukaanRekening(nasabah.NIK)
+	rekening, err = t.PembukaanRekening(nasabah.NIK)
 	if err != nil {
 		err = fmt.Errorf("pembukaan rekening gagal")
 		t.log.WithFields(logrus.Fields{
