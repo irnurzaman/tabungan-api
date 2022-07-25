@@ -2,11 +2,15 @@ package app
 
 import (
 	"fmt"
+	"io"
 	"math/rand"
+	"os"
+	"path/filepath"
 	"strconv"
 	"tabungan-api/models"
 	"tabungan-api/repository"
 
+	"github.com/google/uuid"
 	"github.com/jinzhu/copier"
 	"github.com/sirupsen/logrus"
 )
@@ -19,11 +23,15 @@ type TabunganAppInterface interface {
 	GetMutasi(noRekening string) (mutasi []models.Mutasi, err error)
 	TarikDana(noRekening string, nominal float64) (err error)
 	SetorDana(noRekening string, nominal float64) (err error)
+	SavePhoto(file io.Reader, filename, nik string) (err error)
+	SaveDoc(file io.Reader, filename, nik string) (err error)
 }
 
 type TabunganApp struct {
-	repo repository.TabunganRepoInterface
-	log  *logrus.Logger
+	repo     repository.TabunganRepoInterface
+	log      *logrus.Logger
+	photoDir string
+	docDir   string
 }
 
 func (t *TabunganApp) RegistrasiNasabah(request models.RequestRegistrasiNasabah) (rekening models.Rekening, err error) {
@@ -93,14 +101,85 @@ func (t *TabunganApp) SetorDana(noRekening string, nominal float64) (err error) 
 	panic("not implemented") // TODO: Implement
 }
 
+func (t *TabunganApp) SavePhoto(file io.Reader, filename, nik string) (err error) {
+	id, err := t.saveFile(file, t.photoDir, filename)
+	if err != nil {
+		err = fmt.Errorf("failed to save photo")
+		t.log.WithField("nik", nik).Warn(err.Error())
+		return
+	}
+	err = t.repo.SaveFoto(nik, id)
+	if err != nil {
+		err = fmt.Errorf("failed to update photoID in database")
+		t.log.WithFields(logrus.Fields{
+			"nik":     nik,
+			"photoID": id,
+		}).Warn(err.Error())
+	}
+	return
+}
+
+func (t *TabunganApp) SaveDoc(file io.Reader, filename, nik string) (err error) {
+	id, err := t.saveFile(file, t.docDir, filename)
+	if err != nil {
+		err = fmt.Errorf("failed to save document")
+		t.log.WithField("nik", nik).Warn(err.Error())
+		return
+	}
+	err = t.repo.SaveDokumen(nik, id)
+	if err != nil {
+		err = fmt.Errorf("failed to update documentID in database")
+		t.log.WithFields(logrus.Fields{
+			"nik":        nik,
+			"documentID": id,
+		}).Warn(err.Error())
+	}
+	return
+}
+
+func (t *TabunganApp) saveFile(file io.Reader, folder, filename string) (id string, err error) {
+	err = os.MkdirAll(folder, os.ModePerm)
+	if err != nil {
+		t.log.WithFields(logrus.Fields{
+			"folder": folder,
+			"error":  err.Error(),
+		}).Error("failed to create directory if not exists")
+		return
+	}
+	id = genID()
+	ext := filepath.Ext(filename)
+	path := fmt.Sprintf("%s/%s%s", folder, id, ext)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_RDONLY, os.ModePerm)
+	if err != nil {
+		t.log.WithFields(logrus.Fields{
+			"error": err.Error(),
+		}).Error()
+		return
+	}
+	defer f.Close()
+	_, err = io.Copy(f, file)
+	if err != nil {
+		t.log.WithFields(logrus.Fields{
+			"error": err.Error(),
+		})
+	}
+	return
+}
+
 func genNoRekening() (noRekening string) {
 	noRekening = strconv.Itoa(10000000 + rand.Intn(89999999))
 	return
 }
 
-func NewTabunganApp(repo repository.TabunganRepoInterface, log *logrus.Logger) (app *TabunganApp) {
+func genID() string {
+	return uuid.NewString()
+}
+
+func NewTabunganApp(photoDir, docDir string, repo repository.TabunganRepoInterface, log *logrus.Logger) (app *TabunganApp) {
 	return &TabunganApp{
-		repo: repo,
-		log:  log,
+		repo:     repo,
+		log:      log,
+		photoDir: photoDir,
+		docDir:   docDir,
 	}
 }
