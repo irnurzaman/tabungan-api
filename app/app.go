@@ -7,11 +7,12 @@ import (
 	"tabungan-api/models"
 	"tabungan-api/repository"
 
+	"github.com/jinzhu/copier"
 	"github.com/sirupsen/logrus"
 )
 
 type TabunganAppInterface interface {
-	RegistrasiNasabah(nasabah models.Nasabah) (rekening models.Rekening, err error)
+	RegistrasiNasabah(request models.RequestRegistrasiNasabah) (rekening models.Rekening, err error)
 	PembukaanRekening(nik string) (rekening models.Rekening, err error)
 	GetNasabah(nik string) (nasabah models.Nasabah, err error)
 	GetDaftarRekening(nik string) (rekening []models.Rekening, err error)
@@ -22,30 +23,35 @@ type TabunganAppInterface interface {
 
 type TabunganApp struct {
 	repo repository.TabunganRepoInterface
-	log *logrus.Logger
+	log  *logrus.Logger
 }
 
-func (t *TabunganApp) RegistrasiNasabah(nasabah models.Nasabah) (rekening models.Rekening, err error) {
+func (t *TabunganApp) RegistrasiNasabah(request models.RequestRegistrasiNasabah) (rekening models.Rekening, err error) {
+	var nasabah models.Nasabah
+	copier.Copy(&nasabah, request)
 	err = t.repo.InsertNasabah(nasabah)
 	if err != nil {
 		err = fmt.Errorf("registrasi nasabah gagal")
 		t.log.WithFields(logrus.Fields{
-			"nik": nasabah.NIK,
-			"nama": nasabah.Nama,
-			"alamat_ktp": nasabah.AlamatKTP,
+			"nik":             nasabah.NIK,
+			"nama":            nasabah.Nama,
+			"alamat_ktp":      nasabah.AlamatKTP,
 			"alamat_domisili": nasabah.AlamatDomisili,
-			"jenis_kelamin": nasabah.JenisKelamin,
-			"tanggal_lahir": nasabah.TanggalLahir,
+			"jenis_kelamin":   nasabah.JenisKelamin,
+			"tanggal_lahir":   nasabah.TanggalLahir,
 		}).Warn(err.Error())
 		return
 	}
 	rekening, err = t.PembukaanRekening(nasabah.NIK)
 	if err != nil {
-		err = fmt.Errorf("pembukaan rekening gagal")
+		err = fmt.Errorf("registrasi nasabah gagal")
 		t.log.WithFields(logrus.Fields{
-			"nik": nasabah.NIK,
-			"no_rekening": rekening.NoRekening,
-			"saldo": rekening.Saldo,
+			"nik":             nasabah.NIK,
+			"nama":            nasabah.Nama,
+			"alamat_ktp":      nasabah.AlamatKTP,
+			"alamat_domisili": nasabah.AlamatDomisili,
+			"jenis_kelamin":   nasabah.JenisKelamin,
+			"tanggal_lahir":   nasabah.TanggalLahir,
 		}).Warn(err.Error())
 	}
 	return
@@ -59,9 +65,9 @@ func (t *TabunganApp) PembukaanRekening(nik string) (rekening models.Rekening, e
 	if err != nil {
 		err = fmt.Errorf("pembukaan rekening gagal")
 		t.log.WithFields(logrus.Fields{
-			"nik": nik,
+			"nik":         nik,
 			"no_rekening": rekening.NoRekening,
-			"saldo": rekening.Saldo,
+			"saldo":       rekening.Saldo,
 		}).Warn(err.Error())
 	}
 	return
@@ -95,6 +101,6 @@ func genNoRekening() (noRekening string) {
 func NewTabunganApp(repo repository.TabunganRepoInterface, log *logrus.Logger) (app *TabunganApp) {
 	return &TabunganApp{
 		repo: repo,
-		log: log,
+		log:  log,
 	}
 }

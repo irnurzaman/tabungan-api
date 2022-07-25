@@ -130,7 +130,7 @@ func (t *TabunganRepo) SaveDokumen(nik string, dokumenID string) (err error) {
 
 func (t *TabunganRepo) InsertRekening(rekening models.Rekening) (err error) {
 	SQL := "INSERT INTO rekening VALUES (:nik, :no_rekening, :saldo)"
-	_, err = t.db.Exec(SQL, rekening)
+	_, err = t.db.NamedExec(SQL, rekening)
 	if err != nil {
 		t.log.WithFields(logrus.Fields{
 			"nik":         rekening.NIK,
