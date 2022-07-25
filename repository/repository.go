@@ -5,8 +5,8 @@ import (
 	"tabungan-api/models"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/sirupsen/logrus"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/sirupsen/logrus"
 )
 
 type TabunganRepoInterface interface {
@@ -91,8 +91,8 @@ func (t *TabunganRepo) GetNasabah(nik string) (nasabah models.Nasabah, err error
 	err = t.db.Get(&nasabah, SQL, nik)
 	if err != nil {
 		t.log.WithFields(logrus.Fields{
-			"nik":     nik,
-			"error":   err.Error(),
+			"nik":   nik,
+			"error": err.Error(),
 		}).Error("get nasabah error")
 	}
 	return
@@ -103,11 +103,11 @@ func (t *TabunganRepo) UpdateNasabah(nasabah models.Nasabah) (err error) {
 	_, err = t.db.NamedExec(SQL, nasabah)
 	if err != nil {
 		t.log.WithFields(logrus.Fields{
-			"nik":     nasabah.NIK,
-			"nama": nasabah.Nama,
-			"alamat_ktp": nasabah.AlamatKTP,
+			"nik":             nasabah.NIK,
+			"nama":            nasabah.Nama,
+			"alamat_ktp":      nasabah.AlamatKTP,
 			"alamat_domisili": nasabah.AlamatDomisili,
-			"error":   err.Error(),
+			"error":           err.Error(),
 		}).Error("update data nasabah error")
 	}
 	return
@@ -140,7 +140,17 @@ func (t *TabunganRepo) SaveDokumen(nik string, dokumenID string) (err error) {
 }
 
 func (t *TabunganRepo) InsertRekening(rekening models.Rekening) (err error) {
-	panic("not implemented") // TODO: Implement
+	SQL := "INSERT INTO rekening VALUES (:nik, :no_rekening, :saldo)"
+	_, err = t.db.Exec(SQL, rekening)
+	if err != nil {
+		t.log.WithFields(logrus.Fields{
+			"nik":         rekening.NIK,
+			"no_rekening": rekening.NoRekening,
+			"saldo":       rekening.Saldo,
+			"error":       err.Error(),
+		}).Error("insert rekening error")
+	}
+	return
 }
 
 func (t *TabunganRepo) GetDaftarRekening(nik string) (rekening []models.Rekening, err error) {
@@ -174,7 +184,7 @@ func InitDatabase(database string, logger *logrus.Logger) (repo *TabunganRepo) {
 	}
 
 	repo = &TabunganRepo{
-		db: db,
+		db:  db,
 		log: logger,
 	}
 	repo.initDatabase()
