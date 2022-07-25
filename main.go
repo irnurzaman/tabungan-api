@@ -20,5 +20,4 @@ func main() {
 		database = "tabungan.db"
 	}
 	db := repository.InitDatabase(database, logger)
-	db.StartTransaction()
 }

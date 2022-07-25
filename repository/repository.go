@@ -10,7 +10,6 @@ import (
 )
 
 type TabunganRepoInterface interface {
-	StartTransaction() (tx *sqlx.Tx, err error)
 	InsertNasabah(nasabah models.Nasabah) (err error)
 	GetNasabah(nik string) (nasabah models.Nasabah, err error)
 	UpdateNasabah(nasabah models.Nasabah) (err error)
@@ -59,19 +58,9 @@ func (t *TabunganRepo) initDatabase() {
 	t.db.MustExec(SQL)
 }
 
-func (t *TabunganRepo) StartTransaction() (tx *sqlx.Tx, err error) {
-	tx, err = t.db.Beginx()
-	if err != nil {
-		t.log.WithFields(logrus.Fields{
-			"error": err.Error(),
-		}).Error("start transaction error")
-	}
-	return
-}
-
-func (t *TabunganRepo) InsertNasabah(tx *sqlx.Tx, nasabah models.Nasabah) (err error) {
+func (t *TabunganRepo) InsertNasabah(nasabah models.Nasabah) (err error) {
 	SQL := "INSERT INTO nasabah VALUES (:nik, :nama, :alamat_ktp, :alamat_domisili, :jenis_kelamin, :tanggal_lahir, :foto_id, :dokumen_id)"
-	_, err = tx.NamedExec(SQL, nasabah)
+	_, err = t.db.NamedExec(SQL, nasabah)
 	if err != nil {
 		t.log.WithFields(logrus.Fields{
 			"nik":             nasabah.NIK,

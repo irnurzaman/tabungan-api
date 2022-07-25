@@ -26,7 +26,29 @@ type TabunganApp struct {
 }
 
 func (t *TabunganApp) RegistrasiNasabah(nasabah models.Nasabah) (err error) {
-	panic("not implemented") // TODO: Implement
+	err = t.repo.InsertNasabah(nasabah)
+	if err != nil {
+		err = fmt.Errorf("registrasi nasabah gagal")
+		t.log.WithFields(logrus.Fields{
+			"nik": nasabah.NIK,
+			"nama": nasabah.Nama,
+			"alamat_ktp": nasabah.AlamatKTP,
+			"alamat_domisili": nasabah.AlamatDomisili,
+			"jenis_kelamin": nasabah.JenisKelamin,
+			"tanggal_lahir": nasabah.TanggalLahir,
+		}).Warn(err.Error())
+		return
+	}
+	rekening, err := t.PembukaanRekening(nasabah.NIK)
+	if err != nil {
+		err = fmt.Errorf("pembukaan rekening gagal")
+		t.log.WithFields(logrus.Fields{
+			"nik": nasabah.NIK,
+			"no_rekening": rekening.NoRekening,
+			"saldo": rekening.Saldo,
+		}).Warn(err.Error())
+	}
+	return
 }
 
 func (t *TabunganApp) PembukaanRekening(nik string) (rekening models.Rekening, err error) {
