@@ -9,6 +9,13 @@ type RequestRegistrasiNasabah struct {
 	TanggalLahir   string `json:"tanggal_lahir" db:"tanggal_lahir"`
 }
 
+type RequestUpdateNasabah struct {
+	NIK            string `db:"nik"`
+	Nama           string `json:"nama" db:"nama"`
+	AlamatKTP      string `json:"alamat_ktp" db:"alamat_ktp"`
+	AlamatDomisili string `json:"alamat_domisili" db:"alamat_domisili"`
+}
+
 type RequestTarikSetorDana struct {
 	NoRekening string  `json:"no_rekening"`
 	Nominal    float64 `json:"nominal"`

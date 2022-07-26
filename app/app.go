@@ -17,6 +17,7 @@ import (
 
 type TabunganAppInterface interface {
 	RegistrasiNasabah(request models.RequestRegistrasiNasabah) (rekening models.Rekening, err error)
+	UpdateNasabah(nik string, request models.RequestUpdateNasabah) (err error)
 	PembukaanRekening(nik string) (rekening models.Rekening, err error)
 	GetNasabah(nik string) (nasabah models.Nasabah, err error)
 	GetDaftarRekening(nik string) (rekening []string, err error)
@@ -61,6 +62,21 @@ func (t *TabunganApp) RegistrasiNasabah(request models.RequestRegistrasiNasabah)
 			"alamat_domisili": nasabah.AlamatDomisili,
 			"jenis_kelamin":   nasabah.JenisKelamin,
 			"tanggal_lahir":   nasabah.TanggalLahir,
+		}).Warn(err.Error())
+	}
+	return
+}
+
+func (t *TabunganApp) UpdateNasabah(nik string, request models.RequestUpdateNasabah) (err error) {
+	request.NIK = nik
+	err = t.repo.UpdateNasabah(request)
+	if err != nil {
+		err = fmt.Errorf("update nasabah error")
+		t.log.WithFields(logrus.Fields{
+			"nik":             nik,
+			"nama":            request.Nama,
+			"alamat_ktp":      request.AlamatKTP,
+			"alamat_domisili": request.AlamatDomisili,
 		}).Warn(err.Error())
 	}
 	return
@@ -156,7 +172,7 @@ func (t *TabunganApp) SetorDana(nik, noRekening string, nominal float64) (saldoA
 	saldoAkhir = rekening.Saldo + nominal
 	err = t.repo.UpdateSaldo(noRekening, nominal)
 	if err != nil {
-		err = fmt.Errorf("setor dana rekening error")
+		err = fmt.Errorf("tarik dana rekening error")
 		t.log.WithFields(logrus.Fields{
 			"no_rekening": noRekening,
 			"saldo":       rekening.Saldo,
