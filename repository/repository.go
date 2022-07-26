@@ -16,12 +16,11 @@ type TabunganRepoInterface interface {
 	SaveFoto(nik string, fotoID string) (err error)
 	SaveDokumen(nik string, dokumenID string) (err error)
 	InsertRekening(rekening models.Rekening) (err error)
-	GetDaftarRekening(nik string) (rekening []models.Rekening, err error)
-	GetRekening(noRekening string) (rekening models.Rekening, err error)
+	GetDaftarRekening(nik string) (rekening []string, err error)
+	GetRekening(nik, noRekening string) (rekening models.Rekening, err error)
 	InsertMutasi(mutasi models.Mutasi) (err error)
 	GetMutasi(noRekening string, page int, show int) (mutasi []models.Mutasi)
-	TarikDana(noRekening string, nominal float64) (err error)
-	SetorDana(noRekening string, nominal float64) (err error)
+	UpdateSaldo(noRekening string, nominal float64) (err error)
 }
 
 type TabunganRepo struct {
@@ -142,12 +141,29 @@ func (t *TabunganRepo) InsertRekening(rekening models.Rekening) (err error) {
 	return
 }
 
-func (t *TabunganRepo) GetDaftarRekening(nik string) (rekening []models.Rekening, err error) {
-	panic("not implemented") // TODO: Implement
+func (t *TabunganRepo) GetDaftarRekening(nik string) (rekening []string, err error) {
+	SQL := "SELECT no_rekening FROM rekening WHERE nik = $1"
+	err = t.db.Select(&rekening, SQL, nik)
+	if err != nil {
+		t.log.WithFields(logrus.Fields{
+			"nik":   nik,
+			"error": err.Error(),
+		}).Error("get rekening error")
+	}
+	return
 }
 
-func (t *TabunganRepo) GetRekening(nik string) (rekening models.Rekening, err error) {
-	panic("not implemented") // TODO: Implement
+func (t *TabunganRepo) GetRekening(nik, noRekening string) (rekening models.Rekening, err error) {
+	SQL := "SELECT * FROM rekening WHERE nik = $1 AND no_rekening = $2"
+	err = t.db.Get(&rekening, SQL, nik, noRekening)
+	if err != nil {
+		t.log.WithFields(logrus.Fields{
+			"nik":         nik,
+			"no_rekening": noRekening,
+			"error":       err.Error(),
+		}).Error("get rekening error")
+	}
+	return
 }
 
 func (t *TabunganRepo) InsertMutasi(mutasi models.Mutasi) (err error) {
@@ -158,12 +174,16 @@ func (t *TabunganRepo) GetMutasi(noRekening string, page int, show int) (mutasi 
 	panic("not implemented") // TODO: Implement
 }
 
-func (t *TabunganRepo) TarikDana(noRekening string, nominal float64) (err error) {
-	panic("not implemented") // TODO: Implement
-}
-
-func (t *TabunganRepo) SetorDana(noRekening string, nominal float64) (err error) {
-	panic("not implemented") // TODO: Implement
+func (t *TabunganRepo) UpdateSaldo(noRekening string, nominal float64) (err error) {
+	SQL := "UPDATE rekening SET saldo = saldo + $1 WHERE no_rekening = $2"
+	_, err = t.db.Exec(SQL, nominal, noRekening)
+	if err != nil {
+		t.log.WithFields(logrus.Fields{
+			"no_rekening": noRekening,
+			"error":       err.Error(),
+		}).Error("tarik dana rekening error")
+	}
+	return
 }
 
 func InitDatabase(database string, logger *logrus.Logger) (repo *TabunganRepo) {

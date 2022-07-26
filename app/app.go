@@ -19,10 +19,11 @@ type TabunganAppInterface interface {
 	RegistrasiNasabah(request models.RequestRegistrasiNasabah) (rekening models.Rekening, err error)
 	PembukaanRekening(nik string) (rekening models.Rekening, err error)
 	GetNasabah(nik string) (nasabah models.Nasabah, err error)
-	GetDaftarRekening(nik string) (rekening []models.Rekening, err error)
+	GetDaftarRekening(nik string) (rekening []string, err error)
+	GetRekening(nik, noRekening string) (rekening models.Rekening, err error)
 	GetMutasi(noRekening string) (mutasi []models.Mutasi, err error)
-	TarikDana(noRekening string, nominal float64) (err error)
-	SetorDana(noRekening string, nominal float64) (err error)
+	TarikDana(nik, noRekening string, nominal float64) (saldoAkhir float64, err error)
+	SetorDana(nik, noRekening string, nominal float64) (saldoAkhir float64, err error)
 	SavePhoto(file io.Reader, filename, nik string) (err error)
 	SaveDoc(file io.Reader, filename, nik string) (err error)
 }
@@ -82,23 +83,88 @@ func (t *TabunganApp) PembukaanRekening(nik string) (rekening models.Rekening, e
 }
 
 func (t *TabunganApp) GetNasabah(nik string) (nasabah models.Nasabah, err error) {
-	panic("not implemented") // TODO: Implement
+	nasabah, err = t.repo.GetNasabah(nik)
+	if err != nil {
+		err = fmt.Errorf("query data nasabah gagal")
+		t.log.WithFields(logrus.Fields{
+			"nik": nik,
+		}).Warn(err.Error())
+	}
+	return
 }
 
-func (t *TabunganApp) GetDaftarRekening(nik string) (rekening []models.Rekening, err error) {
-	panic("not implemented") // TODO: Implement
+func (t *TabunganApp) GetDaftarRekening(nik string) (rekening []string, err error) {
+	rekening, err = t.repo.GetDaftarRekening(nik)
+	if err != nil {
+		err = fmt.Errorf("query daftar rekening gagal")
+		t.log.WithFields(logrus.Fields{
+			"nik": nik,
+		}).Warn(err.Error())
+	}
+	return
+}
+
+func (t *TabunganApp) GetRekening(nik, noRekening string) (rekening models.Rekening, err error) {
+	rekening, err = t.repo.GetRekening(nik, noRekening)
+	if err != nil {
+		err = fmt.Errorf("query data rekening gagal")
+		t.log.WithFields(logrus.Fields{
+			"nik":         nik,
+			"no_rekening": noRekening,
+		}).Warn(err.Error())
+	}
+	return
 }
 
 func (t *TabunganApp) GetMutasi(noRekening string) (mutasi []models.Mutasi, err error) {
 	panic("not implemented") // TODO: Implement
 }
 
-func (t *TabunganApp) TarikDana(noRekening string, nominal float64) (err error) {
-	panic("not implemented") // TODO: Implement
+func (t *TabunganApp) TarikDana(nik, noRekening string, nominal float64) (saldoAkhir float64, err error) {
+	rekening, err := t.GetRekening(nik, noRekening)
+	if err != nil {
+		return
+	}
+	if nominal > rekening.Saldo {
+		err = fmt.Errorf("saldo tidak mencukupi")
+		t.log.WithFields(logrus.Fields{
+			"no_rekening": noRekening,
+			"saldo":       rekening.Saldo,
+			"nominal":     nominal,
+		}).Warn("tarik dana gagal")
+		return
+	}
+	saldoAkhir = rekening.Saldo - nominal
+	err = t.repo.UpdateSaldo(noRekening, -nominal)
+	if err != nil {
+		err = fmt.Errorf("tarik dana rekening error")
+		t.log.WithFields(logrus.Fields{
+			"no_rekening": noRekening,
+			"saldo":       rekening.Saldo,
+			"nominal":     nominal,
+		})
+		return
+	}
+	return
 }
 
-func (t *TabunganApp) SetorDana(noRekening string, nominal float64) (err error) {
-	panic("not implemented") // TODO: Implement
+func (t *TabunganApp) SetorDana(nik, noRekening string, nominal float64) (saldoAkhir float64, err error) {
+	rekening, err := t.GetRekening(nik, noRekening)
+	if err != nil {
+		return
+	}
+	saldoAkhir = rekening.Saldo + nominal
+	err = t.repo.UpdateSaldo(noRekening, nominal)
+	if err != nil {
+		err = fmt.Errorf("setor dana rekening error")
+		t.log.WithFields(logrus.Fields{
+			"no_rekening": noRekening,
+			"saldo":       rekening.Saldo,
+			"nominal":     nominal,
+		})
+		return
+	}
+	return
 }
 
 func (t *TabunganApp) SavePhoto(file io.Reader, filename, nik string) (err error) {
@@ -147,7 +213,7 @@ func (t *TabunganApp) saveFile(file io.Reader, folder, filename string) (id stri
 		return
 	}
 	ext := filepath.Ext(filename)
-	id = fmt.Sprintf("%s%s", genID(), ext) 
+	id = fmt.Sprintf("%s%s", genID(), ext)
 	path := fmt.Sprintf("%s/%s", folder, id)
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_RDONLY, os.ModePerm)
 	if err != nil {

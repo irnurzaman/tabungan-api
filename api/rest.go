@@ -94,6 +94,130 @@ func (t *TabunganRESTAPI) uploadFile(c *fiber.Ctx) (err error) {
 	return c.SendStatus(http.StatusOK)
 }
 
+func (t *TabunganRESTAPI) getNasabah(c *fiber.Ctx) (err error) {
+	response := make(map[string]interface{})
+	nik := c.Get("Authorization", "")
+	if nik == "" {
+		err = fmt.Errorf("missing NIK in authorization header")
+		t.log.Warn(err.Error())
+		response["remark"] = err.Error()
+		c.Status(http.StatusUnauthorized)
+		return c.JSON(response)
+	}
+	nasabah, err := t.app.GetNasabah(nik)
+	if err != nil {
+		response["remark"] = err.Error()
+		c.Status(http.StatusBadRequest)
+		return c.JSON(response)
+	}
+	response["data"] = nasabah
+	return c.JSON(response)
+}
+
+func (t *TabunganRESTAPI) getDaftarRekening(c *fiber.Ctx) (err error) {
+	response := make(map[string]interface{})
+	nik := c.Get("Authorization", "")
+	if nik == "" {
+		err = fmt.Errorf("missing NIK in authorization header")
+		t.log.Warn(err.Error())
+		response["remark"] = err.Error()
+		c.Status(http.StatusUnauthorized)
+		return c.JSON(response)
+	}
+	rekening, err := t.app.GetDaftarRekening(nik)
+	if err != nil {
+		response["remark"] = err.Error()
+		c.Status(http.StatusBadRequest)
+		return c.JSON(response)
+	}
+	response["data"] = rekening
+	return c.JSON(response)
+}
+
+func (t *TabunganRESTAPI) getRekening(c *fiber.Ctx) (err error) {
+	response := make(map[string]interface{})
+	nik := c.Get("Authorization", "")
+	if nik == "" {
+		err = fmt.Errorf("missing NIK in authorization header")
+		t.log.Warn(err.Error())
+		response["remark"] = err.Error()
+		c.Status(http.StatusUnauthorized)
+		return c.JSON(response)
+	}
+	noRekening := c.Params("rekening", "")
+	if nik == "" {
+		err = fmt.Errorf("missing no-rekening in path parameter")
+		t.log.Warn(err.Error())
+		response["remark"] = err.Error()
+		c.Status(http.StatusBadRequest)
+		return c.JSON(response)
+	}
+	rekening, err := t.app.GetRekening(nik, noRekening)
+	if err != nil {
+		response["remark"] = err.Error()
+		c.Status(http.StatusBadRequest)
+		return c.JSON(response)
+	}
+	response["data"] = rekening
+	return c.JSON(response)
+}
+
+func (t *TabunganRESTAPI) tarikDana(c *fiber.Ctx) (err error) {
+	var request models.RequestTarikSetorDana
+	response := make(map[string]interface{})
+	nik := c.Get("Authorization", "")
+	if nik == "" {
+		err = fmt.Errorf("missing NIK in authorization header")
+		t.log.Warn(err.Error())
+		response["remark"] = err.Error()
+		c.Status(http.StatusUnauthorized)
+		return c.JSON(response)
+	}
+	err = c.BodyParser(&request)
+	if err != nil {
+		t.log.WithField("error", err.Error()).Error("parse request body to JSON error")
+		response["remark"] = "Failed to parse request body"
+		c.Status(http.StatusBadRequest)
+		return c.JSON(response)
+	}
+	saldoAkhir, err := t.app.TarikDana(nik, request.NoRekening, request.Nominal)
+	if err != nil {
+		response["remark"] = err.Error()
+		c.Status(http.StatusBadRequest)
+		return c.JSON(response)
+	}
+	response["saldo_akhir"] = saldoAkhir
+	return c.JSON(response)
+}
+
+func (t *TabunganRESTAPI) setorDana(c *fiber.Ctx) (err error) {
+	var request models.RequestTarikSetorDana
+	response := make(map[string]interface{})
+	nik := c.Get("Authorization", "")
+	if nik == "" {
+		err = fmt.Errorf("missing NIK in authorization header")
+		t.log.Warn(err.Error())
+		response["remark"] = err.Error()
+		c.Status(http.StatusUnauthorized)
+		return c.JSON(response)
+	}
+	err = c.BodyParser(&request)
+	if err != nil {
+		t.log.WithField("error", err.Error()).Error("parse request body to JSON error")
+		response["remark"] = "Failed to parse request body"
+		c.Status(http.StatusBadRequest)
+		return c.JSON(response)
+	}
+	saldoAkhir, err := t.app.SetorDana(nik, request.NoRekening, request.Nominal)
+	if err != nil {
+		response["remark"] = err.Error()
+		c.Status(http.StatusBadRequest)
+		return c.JSON(response)
+	}
+	response["saldo_akhir"] = saldoAkhir
+	return c.JSON(response)
+}
+
 func (t *TabunganRESTAPI) Start() {
 	addr := fmt.Sprintf("%s:%d", t.host, t.port)
 	t.server.Listen(addr)
@@ -110,5 +234,10 @@ func NewRESTAPI(host string, port int, app app.TabunganAppInterface, logger *log
 	}
 	api.server.Post("/registrasi", api.registrasiNasabah)
 	api.server.Post("/file", api.uploadFile)
+	api.server.Get("/nasabah", api.getNasabah)
+	api.server.Get("/rekening/list", api.getDaftarRekening)
+	api.server.Get("/rekening/:rekening", api.getRekening)
+	api.server.Post("/tarik", api.tarikDana)
+	api.server.Post("/setor", api.setorDana)
 	return api
 }
