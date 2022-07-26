@@ -19,7 +19,7 @@ type TabunganAppInterface interface {
 	RegistrasiNasabah(request models.RequestRegistrasiNasabah) (rekening models.Rekening, err error)
 	PembukaanRekening(nik string) (rekening models.Rekening, err error)
 	GetNasabah(nik string) (nasabah models.Nasabah, err error)
-	GetDaftarRekening(nik string) (rekening []models.Rekening, err error)
+	GetDaftarRekening(nik string) (rekening []string, err error)
 	GetMutasi(noRekening string) (mutasi []models.Mutasi, err error)
 	TarikDana(noRekening string, nominal float64) (err error)
 	SetorDana(noRekening string, nominal float64) (err error)
@@ -92,8 +92,17 @@ func (t *TabunganApp) GetNasabah(nik string) (nasabah models.Nasabah, err error)
 	return
 }
 
-func (t *TabunganApp) GetDaftarRekening(nik string) (rekening []models.Rekening, err error) {
-	panic("not implemented") // TODO: Implement
+func (t *TabunganApp) GetDaftarRekening(nik string) (rekening []string, err error) {
+	rekening, err = t.repo.GetDaftarRekening(nik)
+	if err != nil {
+		err = fmt.Errorf("query daftar rekening gagal")
+		t.log.WithFields(logrus.Fields{
+			"nik": nik,
+		}).Warn(err.Error())
+	}
+	return
+}
+
 }
 
 func (t *TabunganApp) GetMutasi(noRekening string) (mutasi []models.Mutasi, err error) {
