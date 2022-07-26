@@ -94,6 +94,26 @@ func (t *TabunganRESTAPI) uploadFile(c *fiber.Ctx) (err error) {
 	return c.SendStatus(http.StatusOK)
 }
 
+func (t *TabunganRESTAPI) getNasabah(c *fiber.Ctx) (err error) {
+	response := make(map[string]interface{})
+	nik := c.Get("Authorization", "")
+	if nik == "" {
+		err = fmt.Errorf("missing NIK in authorization header")
+		t.log.Warn(err.Error())
+		response["remark"] = err.Error()
+		c.Status(http.StatusUnauthorized)
+		return c.JSON(response)
+	}
+	nasabah, err := t.app.GetNasabah(nik)
+	if err != nil {
+		response["remark"] = err.Error()
+		c.Status(http.StatusBadRequest)
+		return c.JSON(response)
+	}
+	response["data"] = nasabah
+	return c.JSON(response)
+}
+
 func (t *TabunganRESTAPI) Start() {
 	addr := fmt.Sprintf("%s:%d", t.host, t.port)
 	t.server.Listen(addr)
@@ -110,5 +130,6 @@ func NewRESTAPI(host string, port int, app app.TabunganAppInterface, logger *log
 	}
 	api.server.Post("/registrasi", api.registrasiNasabah)
 	api.server.Post("/file", api.uploadFile)
+	api.server.Get("/nasabah", api.getNasabah)
 	return api
 }

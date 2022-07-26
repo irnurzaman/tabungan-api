@@ -82,7 +82,14 @@ func (t *TabunganApp) PembukaanRekening(nik string) (rekening models.Rekening, e
 }
 
 func (t *TabunganApp) GetNasabah(nik string) (nasabah models.Nasabah, err error) {
-	panic("not implemented") // TODO: Implement
+	nasabah, err = t.repo.GetNasabah(nik)
+	if err != nil {
+		err = fmt.Errorf("query data nasabah gagal")
+		t.log.WithFields(logrus.Fields{
+			"nik": nik,
+		}).Warn(err.Error())
+	}
+	return
 }
 
 func (t *TabunganApp) GetDaftarRekening(nik string) (rekening []models.Rekening, err error) {
@@ -147,7 +154,7 @@ func (t *TabunganApp) saveFile(file io.Reader, folder, filename string) (id stri
 		return
 	}
 	ext := filepath.Ext(filename)
-	id = fmt.Sprintf("%s%s", genID(), ext) 
+	id = fmt.Sprintf("%s%s", genID(), ext)
 	path := fmt.Sprintf("%s/%s", folder, id)
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_RDONLY, os.ModePerm)
 	if err != nil {
