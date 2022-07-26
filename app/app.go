@@ -146,9 +146,9 @@ func (t *TabunganApp) saveFile(file io.Reader, folder, filename string) (id stri
 		}).Error("failed to create directory if not exists")
 		return
 	}
-	id = genID()
 	ext := filepath.Ext(filename)
-	path := fmt.Sprintf("%s/%s%s", folder, id, ext)
+	id = fmt.Sprintf("%s%s", genID(), ext) 
+	path := fmt.Sprintf("%s/%s", folder, id)
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_RDONLY, os.ModePerm)
 	if err != nil {
 		t.log.WithFields(logrus.Fields{
