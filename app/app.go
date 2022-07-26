@@ -149,7 +149,22 @@ func (t *TabunganApp) TarikDana(nik, noRekening string, nominal float64) (saldoA
 }
 
 func (t *TabunganApp) SetorDana(nik, noRekening string, nominal float64) (saldoAkhir float64, err error) {
-	panic("not implemented") // TODO: Implement
+	rekening, err := t.GetRekening(nik, noRekening)
+	if err != nil {
+		return
+	}
+	saldoAkhir = rekening.Saldo + nominal
+	err = t.repo.UpdateSaldo(noRekening, nominal)
+	if err != nil {
+		err = fmt.Errorf("setor dana rekening error")
+		t.log.WithFields(logrus.Fields{
+			"no_rekening": noRekening,
+			"saldo":       rekening.Saldo,
+			"nominal":     nominal,
+		})
+		return
+	}
+	return
 }
 
 func (t *TabunganApp) SavePhoto(file io.Reader, filename, nik string) (err error) {
