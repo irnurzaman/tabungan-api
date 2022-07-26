@@ -20,6 +20,7 @@ type TabunganAppInterface interface {
 	PembukaanRekening(nik string) (rekening models.Rekening, err error)
 	GetNasabah(nik string) (nasabah models.Nasabah, err error)
 	GetDaftarRekening(nik string) (rekening []string, err error)
+	GetRekening(nik, noRekening string) (rekening models.Rekening, err error)
 	GetMutasi(noRekening string) (mutasi []models.Mutasi, err error)
 	TarikDana(noRekening string, nominal float64) (err error)
 	SetorDana(noRekening string, nominal float64) (err error)
@@ -103,6 +104,16 @@ func (t *TabunganApp) GetDaftarRekening(nik string) (rekening []string, err erro
 	return
 }
 
+func (t *TabunganApp) GetRekening(nik, noRekening string) (rekening models.Rekening, err error) {
+	rekening, err = t.repo.GetRekening(nik, noRekening)
+	if err != nil {
+		err = fmt.Errorf("query data rekening gagal")
+		t.log.WithFields(logrus.Fields{
+			"nik":         nik,
+			"no_rekening": noRekening,
+		}).Warn(err.Error())
+	}
+	return
 }
 
 func (t *TabunganApp) GetMutasi(noRekening string) (mutasi []models.Mutasi, err error) {

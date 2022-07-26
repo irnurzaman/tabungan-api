@@ -17,7 +17,7 @@ type TabunganRepoInterface interface {
 	SaveDokumen(nik string, dokumenID string) (err error)
 	InsertRekening(rekening models.Rekening) (err error)
 	GetDaftarRekening(nik string) (rekening []string, err error)
-	GetRekening(noRekening string) (rekening models.Rekening, err error)
+	GetRekening(nik, noRekening string) (rekening models.Rekening, err error)
 	InsertMutasi(mutasi models.Mutasi) (err error)
 	GetMutasi(noRekening string, page int, show int) (mutasi []models.Mutasi)
 	TarikDana(noRekening string, nominal float64) (err error)
@@ -154,8 +154,17 @@ func (t *TabunganRepo) GetDaftarRekening(nik string) (rekening []string, err err
 	return
 }
 
-func (t *TabunganRepo) GetRekening(nik string) (rekening models.Rekening, err error) {
-	panic("not implemented") // TODO: Implement
+func (t *TabunganRepo) GetRekening(nik, noRekening string) (rekening models.Rekening, err error) {
+	SQL := "SELECT * FROM rekening WHERE nik = $1 AND no_rekening = $2"
+	err = t.db.Get(&rekening, SQL, nik, noRekening)
+	if err != nil {
+		t.log.WithFields(logrus.Fields{
+			"nik":         nik,
+			"no_rekening": noRekening,
+			"error":       err.Error(),
+		}).Error("get rekening error")
+	}
+	return
 }
 
 func (t *TabunganRepo) InsertMutasi(mutasi models.Mutasi) (err error) {
