@@ -176,7 +176,15 @@ func (t *TabunganRepo) GetMutasi(noRekening string, page int, show int) (mutasi 
 }
 
 func (t *TabunganRepo) TarikDana(noRekening string, nominal float64) (err error) {
-	panic("not implemented") // TODO: Implement
+	SQL := "UPDATE rekening SET saldo = saldo - $1 WHERE no_rekening = $2"
+	_, err = t.db.Exec(SQL, nominal, noRekening)
+	if err != nil {
+		t.log.WithFields(logrus.Fields{
+			"no_rekening": noRekening,
+			"error":       err.Error(),
+		}).Error("tarik dana rekening error")
+	}
+	return
 }
 
 func (t *TabunganRepo) SetorDana(noRekening string, nominal float64) (err error) {

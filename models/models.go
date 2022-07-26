@@ -8,6 +8,12 @@ type RequestRegistrasiNasabah struct {
 	JenisKelamin   string `json:"jenis_kelamin" db:"jenis_kelamin"`
 	TanggalLahir   string `json:"tanggal_lahir" db:"tanggal_lahir"`
 }
+
+type RequestTarikSetorDana struct {
+	NoRekening string  `json:"no_rekening"`
+	Nominal    float64 `json:"nominal"`
+}
+
 type Nasabah struct {
 	RequestRegistrasiNasabah
 	FotoID    string `json:"foto_id" db:"foto_id"`

@@ -22,8 +22,8 @@ type TabunganAppInterface interface {
 	GetDaftarRekening(nik string) (rekening []string, err error)
 	GetRekening(nik, noRekening string) (rekening models.Rekening, err error)
 	GetMutasi(noRekening string) (mutasi []models.Mutasi, err error)
-	TarikDana(noRekening string, nominal float64) (err error)
-	SetorDana(noRekening string, nominal float64) (err error)
+	TarikDana(nik, noRekening string, nominal float64) (saldoAkhir float64, err error)
+	SetorDana(nik, noRekening string, nominal float64) (saldoAkhir float64, err error)
 	SavePhoto(file io.Reader, filename, nik string) (err error)
 	SaveDoc(file io.Reader, filename, nik string) (err error)
 }
@@ -120,11 +120,35 @@ func (t *TabunganApp) GetMutasi(noRekening string) (mutasi []models.Mutasi, err 
 	panic("not implemented") // TODO: Implement
 }
 
-func (t *TabunganApp) TarikDana(noRekening string, nominal float64) (err error) {
-	panic("not implemented") // TODO: Implement
+func (t *TabunganApp) TarikDana(nik, noRekening string, nominal float64) (saldoAkhir float64, err error) {
+	rekening, err := t.GetRekening(nik, noRekening)
+	if err != nil {
+		return
+	}
+	if nominal > rekening.Saldo {
+		err = fmt.Errorf("saldo tidak mencukupi")
+		t.log.WithFields(logrus.Fields{
+			"no_rekening": noRekening,
+			"saldo":       rekening.Saldo,
+			"nominal":     nominal,
+		}).Warn("tarik dana gagal")
+		return
+	}
+	saldoAkhir = rekening.Saldo - nominal
+	err = t.repo.TarikDana(noRekening, nominal)
+	if err != nil {
+		err = fmt.Errorf("tarik dana rekening error")
+		t.log.WithFields(logrus.Fields{
+			"no_rekening": noRekening,
+			"saldo":       rekening.Saldo,
+			"nominal":     nominal,
+		})
+		return
+	}
+	return
 }
 
-func (t *TabunganApp) SetorDana(noRekening string, nominal float64) (err error) {
+func (t *TabunganApp) SetorDana(nik, noRekening string, nominal float64) (saldoAkhir float64, err error) {
 	panic("not implemented") // TODO: Implement
 }
 
