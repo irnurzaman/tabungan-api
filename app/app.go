@@ -135,7 +135,7 @@ func (t *TabunganApp) TarikDana(nik, noRekening string, nominal float64) (saldoA
 		return
 	}
 	saldoAkhir = rekening.Saldo - nominal
-	err = t.repo.TarikDana(noRekening, nominal)
+	err = t.repo.UpdateSaldo(noRekening, -nominal)
 	if err != nil {
 		err = fmt.Errorf("tarik dana rekening error")
 		t.log.WithFields(logrus.Fields{

@@ -20,8 +20,7 @@ type TabunganRepoInterface interface {
 	GetRekening(nik, noRekening string) (rekening models.Rekening, err error)
 	InsertMutasi(mutasi models.Mutasi) (err error)
 	GetMutasi(noRekening string, page int, show int) (mutasi []models.Mutasi)
-	TarikDana(noRekening string, nominal float64) (err error)
-	SetorDana(noRekening string, nominal float64) (err error)
+	UpdateSaldo(noRekening string, nominal float64) (err error)
 }
 
 type TabunganRepo struct {
@@ -175,8 +174,8 @@ func (t *TabunganRepo) GetMutasi(noRekening string, page int, show int) (mutasi 
 	panic("not implemented") // TODO: Implement
 }
 
-func (t *TabunganRepo) TarikDana(noRekening string, nominal float64) (err error) {
-	SQL := "UPDATE rekening SET saldo = saldo - $1 WHERE no_rekening = $2"
+func (t *TabunganRepo) UpdateSaldo(noRekening string, nominal float64) (err error) {
+	SQL := "UPDATE rekening SET saldo = saldo + $1 WHERE no_rekening = $2"
 	_, err = t.db.Exec(SQL, nominal, noRekening)
 	if err != nil {
 		t.log.WithFields(logrus.Fields{
@@ -185,10 +184,6 @@ func (t *TabunganRepo) TarikDana(noRekening string, nominal float64) (err error)
 		}).Error("tarik dana rekening error")
 	}
 	return
-}
-
-func (t *TabunganRepo) SetorDana(noRekening string, nominal float64) (err error) {
-	panic("not implemented") // TODO: Implement
 }
 
 func InitDatabase(database string, logger *logrus.Logger) (repo *TabunganRepo) {
