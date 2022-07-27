@@ -23,7 +23,7 @@ type TabunganAppInterface interface {
 	GetNasabah(nik string) (nasabah models.Nasabah, err error)
 	GetDaftarRekening(nik string) (rekening []string, err error)
 	GetRekening(nik, noRekening string) (rekening models.Rekening, err error)
-	GetMutasi(noRekening string) (mutasi []models.Mutasi, err error)
+	GetMutasi(noRekening string, page, show int) (mutasi []models.Mutasi, err error)
 	TarikDana(nik, noRekening string, nominal float64) (saldoAkhir float64, err error)
 	SetorDana(nik, noRekening string, nominal float64) (saldoAkhir float64, err error)
 	SavePhoto(file io.Reader, filename, nik string) (err error)
@@ -133,8 +133,18 @@ func (t *TabunganApp) GetRekening(nik, noRekening string) (rekening models.Reken
 	return
 }
 
-func (t *TabunganApp) GetMutasi(noRekening string) (mutasi []models.Mutasi, err error) {
-	panic("not implemented") // TODO: Implement
+func (t *TabunganApp) GetMutasi(noRekening string, page, show int) (mutasi []models.Mutasi, err error) {
+	offset := (page - 1) * show
+	mutasi, err = t.repo.GetMutasi(noRekening, show, offset)
+	if err != nil {
+		err = fmt.Errorf("query data mutasi gagal")
+		t.log.WithFields(logrus.Fields{
+			"no_rekening": noRekening,
+			"page":        page,
+			"show":        show,
+		}).Warn(err.Error())
+	}
+	return
 }
 
 func (t *TabunganApp) TarikDana(nik, noRekening string, nominal float64) (saldoAkhir float64, err error) {

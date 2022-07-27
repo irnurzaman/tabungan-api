@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 	"tabungan-api/app"
 	"tabungan-api/models"
 
@@ -145,7 +146,7 @@ func (t *TabunganRESTAPI) getRekening(c *fiber.Ctx) (err error) {
 		return c.JSON(response)
 	}
 	noRekening := c.Params("rekening", "")
-	if nik == "" {
+	if noRekening == "" {
 		err = fmt.Errorf("missing no-rekening in path parameter")
 		t.log.Warn(err.Error())
 		response["remark"] = err.Error()
@@ -245,6 +246,50 @@ func (t *TabunganRESTAPI) updateNasabah(c *fiber.Ctx) (err error) {
 	return c.SendStatus(http.StatusOK)
 }
 
+func (t *TabunganRESTAPI) getMutasi(c *fiber.Ctx) (err error) {
+	response := make(map[string]interface{})
+	noRekening := c.Params("rekening", "")
+	if noRekening == "" {
+		err = fmt.Errorf("missing no-rekening in path parameter")
+		t.log.Warn(err.Error())
+		response["remark"] = err.Error()
+		c.Status(http.StatusBadRequest)
+		return c.JSON(response)
+	}
+	page := c.Query("page", "1")
+	pageInt, err := strconv.Atoi(page)
+	if err != nil {
+		t.log.WithFields(logrus.Fields{
+			"no_rekening": noRekening,
+			"page":        page,
+			"error":       err.Error(),
+		}).Error("parsing page query parameter to int failed")
+		response["remark"] = "parsing page query parameter to int failed"
+		c.Status(http.StatusBadRequest)
+		return c.JSON(response)
+	}
+	show := c.Query("show", "1")
+	showInt, err := strconv.Atoi(show)
+	if err != nil {
+		t.log.WithFields(logrus.Fields{
+			"no_rekening": noRekening,
+			"show":        show,
+			"error":       err.Error(),
+		}).Error("parsing show query parameter to int failed")
+		response["remark"] = "parsing show query parameter to int failed"
+		c.Status(http.StatusBadRequest)
+		return c.JSON(response)
+	}
+	mutasi, err := t.app.GetMutasi(noRekening, pageInt, showInt)
+	if err != nil {
+		response["remark"] = err.Error()
+		c.Status(http.StatusBadRequest)
+		return c.JSON(response)
+	}
+	response["data"] = mutasi
+	return c.JSON(response)
+}
+
 func (t *TabunganRESTAPI) Start() {
 	addr := fmt.Sprintf("%s:%d", t.host, t.port)
 	t.server.Listen(addr)
@@ -267,5 +312,6 @@ func NewRESTAPI(host string, port int, app app.TabunganAppInterface, logger *log
 	api.server.Get("/rekening/:rekening", api.getRekening)
 	api.server.Post("/tarik", api.tarikDana)
 	api.server.Post("/setor", api.setorDana)
+	api.server.Get("/mutasi/:rekening", api.getMutasi)
 	return api
 }
