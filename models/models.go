@@ -39,6 +39,6 @@ type Mutasi struct {
 	JenisMutasi string  `json:"jenis_mutasi" db:"jenis_mutasi"`
 	NoRekening  string  `json:"no_rekening" db:"no_rekening"`
 	Nominal     float64 `json:"nominal" db:"nominal"`
-	SaldoAwal   float64 `json:"saldo_awal"`
-	SaldoAkhir  float64 `json:"saldo_akhir"`
+	SaldoAwal   float64 `json:"saldo_awal" db:"saldo_awal"`
+	SaldoAkhir  float64 `json:"saldo_akhir" db:"saldo_akhir"`
 }
