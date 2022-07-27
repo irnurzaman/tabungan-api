@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"tabungan-api/models"
 	"tabungan-api/repository"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jinzhu/copier"
@@ -158,9 +159,10 @@ func (t *TabunganApp) TarikDana(nik, noRekening string, nominal float64) (saldoA
 			"no_rekening": noRekening,
 			"saldo":       rekening.Saldo,
 			"nominal":     nominal,
-		})
+		}).Warn("tarik dana gagal")
 		return
 	}
+	err = t.insertMutasi(noRekening, "D", nominal, rekening.Saldo, saldoAkhir)
 	return
 }
 
@@ -180,6 +182,7 @@ func (t *TabunganApp) SetorDana(nik, noRekening string, nominal float64) (saldoA
 		})
 		return
 	}
+	err = t.insertMutasi(noRekening, "C", nominal, rekening.Saldo, saldoAkhir)
 	return
 }
 
@@ -219,6 +222,31 @@ func (t *TabunganApp) SaveDoc(file io.Reader, filename, nik string) (err error) 
 	return
 }
 
+func (t *TabunganApp) insertMutasi(noRekening, jenisMutasi string, nominal, saldoAwal, saldoAkhir float64) (err error) {
+	mutasi := models.Mutasi{
+		TransaksiID: genID(),
+		Waktu:       time.Now().String(),
+		NoRekening:  noRekening,
+		JenisMutasi: jenisMutasi,
+		Nominal:     nominal,
+		SaldoAwal:   saldoAwal,
+		SaldoAkhir:  saldoAkhir,
+	}
+	err = t.repo.InsertMutasi(mutasi)
+	if err != nil {
+		err = fmt.Errorf("pencatatan transaksi gagal")
+		t.log.WithFields(logrus.Fields{
+			"no_rekening":  noRekening,
+			"jenis_mutasi": jenisMutasi,
+			"nominal":      nominal,
+			"saldo_awal":   saldoAwal,
+			"saldo_akhir":  saldoAkhir,
+		}).Warn("pencatatan transaksi gagal")
+		return
+	}
+	return
+}
+
 func (t *TabunganApp) saveFile(file io.Reader, folder, filename string) (id string, err error) {
 	err = os.MkdirAll(folder, os.ModePerm)
 	if err != nil {
@@ -235,7 +263,8 @@ func (t *TabunganApp) saveFile(file io.Reader, folder, filename string) (id stri
 	if err != nil {
 		t.log.WithFields(logrus.Fields{
 			"error": err.Error(),
-		}).Error()
+			"path":  path,
+		}).Error("failed to open file")
 		return
 	}
 	defer f.Close()
@@ -243,7 +272,8 @@ func (t *TabunganApp) saveFile(file io.Reader, folder, filename string) (id stri
 	if err != nil {
 		t.log.WithFields(logrus.Fields{
 			"error": err.Error(),
-		})
+			"path":  path,
+		}).Error("failed to write file")
 	}
 	return
 }

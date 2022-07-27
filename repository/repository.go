@@ -19,7 +19,7 @@ type TabunganRepoInterface interface {
 	GetDaftarRekening(nik string) (rekening []string, err error)
 	GetRekening(nik, noRekening string) (rekening models.Rekening, err error)
 	InsertMutasi(mutasi models.Mutasi) (err error)
-	GetMutasi(noRekening string, page int, show int) (mutasi []models.Mutasi)
+	GetMutasi(noRekening string, limit, offset int) (mutasi []models.Mutasi, err error)
 	UpdateSaldo(noRekening string, nominal float64) (err error)
 }
 
@@ -167,11 +167,35 @@ func (t *TabunganRepo) GetRekening(nik, noRekening string) (rekening models.Reke
 }
 
 func (t *TabunganRepo) InsertMutasi(mutasi models.Mutasi) (err error) {
-	panic("not implemented") // TODO: Implement
+	SQL := "INSERT INTO mutasi VALUES (:transaksi_id, :waktu, :jenis_mutasi, :no_rekening, :nominal, :saldo_awal, :saldo_akhir)"
+	_, err = t.db.NamedExec(SQL, mutasi)
+	if err != nil {
+		t.log.WithFields(logrus.Fields{
+			"transaksi_id": mutasi.TransaksiID,
+			"waktu":        mutasi.Waktu,
+			"jenis_mutasi": mutasi.JenisMutasi,
+			"no_rekening":  mutasi.NoRekening,
+			"nominal":      mutasi.Nominal,
+			"saldo_awal":   mutasi.SaldoAwal,
+			"saldo_akhir":  mutasi.SaldoAkhir,
+			"error":        err.Error(),
+		}).Error("insert mutasi error")
+	}
+	return
 }
 
-func (t *TabunganRepo) GetMutasi(noRekening string, page int, show int) (mutasi []models.Mutasi) {
-	panic("not implemented") // TODO: Implement
+func (t *TabunganRepo) GetMutasi(noRekening string, limit, offset int) (mutasi []models.Mutasi, err error) {
+	SQL := "SELECT * FROM mutasi WHERE no_rekening = $1 LIMIT $2 OFFSET $3"
+	err = t.db.Select(&mutasi, SQL, noRekening, limit, offset)
+	if err != nil {
+		t.log.WithFields(logrus.Fields{
+			"no_rekening": noRekening,
+			"limit":       limit,
+			"offset":      offset,
+			"error":       err.Error(),
+		}).Error("query mutasi error")
+	}
+	return
 }
 
 func (t *TabunganRepo) UpdateSaldo(noRekening string, nominal float64) (err error) {
