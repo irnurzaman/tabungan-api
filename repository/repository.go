@@ -19,9 +19,9 @@ type TabunganRepoInterface interface {
 	InsertRekening(tx *sqlx.Tx, rekening models.Rekening) (err error)
 	GetDaftarRekening(nik string) (rekening []string, err error)
 	GetRekening(nik, noRekening string) (rekening models.Rekening, err error)
-	InsertMutasi(mutasi models.Mutasi) (err error)
+	InsertMutasi(tx *sqlx.Tx, mutasi models.Mutasi) (err error)
 	GetMutasi(noRekening string, limit, offset int) (mutasi []models.Mutasi, err error)
-	UpdateSaldo(noRekening string, nominal float64) (err error)
+	UpdateSaldo(tx *sqlx.Tx, noRekening string, nominal float64) (err error)
 }
 
 type TabunganRepo struct {
@@ -175,7 +175,7 @@ func (t *TabunganRepo) GetRekening(nik, noRekening string) (rekening models.Reke
 	return
 }
 
-func (t *TabunganRepo) InsertMutasi(mutasi models.Mutasi) (err error) {
+func (t *TabunganRepo) InsertMutasi(tx *sqlx.Tx, mutasi models.Mutasi) (err error) {
 	SQL := "INSERT INTO mutasi VALUES (:transaksi_id, :waktu, :jenis_mutasi, :no_rekening, :nominal, :saldo_awal, :saldo_akhir)"
 	_, err = t.db.NamedExec(SQL, mutasi)
 	if err != nil {
@@ -207,7 +207,7 @@ func (t *TabunganRepo) GetMutasi(noRekening string, limit, offset int) (mutasi [
 	return
 }
 
-func (t *TabunganRepo) UpdateSaldo(noRekening string, nominal float64) (err error) {
+func (t *TabunganRepo) UpdateSaldo(tx *sqlx.Tx, noRekening string, nominal float64) (err error) {
 	SQL := "UPDATE rekening SET saldo = saldo + $1 WHERE no_rekening = $2"
 	_, err = t.db.Exec(SQL, nominal, noRekening)
 	if err != nil {
