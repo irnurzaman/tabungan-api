@@ -12,7 +12,7 @@ import (
 type TabunganRepoInterface interface {
 	InsertNasabah(nasabah models.Nasabah) (err error)
 	GetNasabah(nik string) (nasabah models.Nasabah, err error)
-	UpdateNasabah(nasabah models.Nasabah) (err error)
+	UpdateNasabah(nasabah models.RequestUpdateNasabah) (err error)
 	SaveFoto(nik string, fotoID string) (err error)
 	SaveDokumen(nik string, dokumenID string) (err error)
 	InsertRekening(rekening models.Rekening) (err error)
@@ -86,7 +86,7 @@ func (t *TabunganRepo) GetNasabah(nik string) (nasabah models.Nasabah, err error
 	return
 }
 
-func (t *TabunganRepo) UpdateNasabah(nasabah models.Nasabah) (err error) {
+func (t *TabunganRepo) UpdateNasabah(nasabah models.RequestUpdateNasabah) (err error) {
 	SQL := "UPDATE nasabah SET nama = :nama, alamat_ktp = :alamat_ktp, alamat_domisili = :alamat_domisili WHERE nik = :nik"
 	_, err = t.db.NamedExec(SQL, nasabah)
 	if err != nil {
