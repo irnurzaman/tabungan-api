@@ -10,17 +10,18 @@ import (
 )
 
 type TabunganRepoInterface interface {
-	InsertNasabah(nasabah models.Nasabah) (err error)
+	StartTransaction() (tx *sqlx.Tx, err error)
+	InsertNasabah(tx *sqlx.Tx, nasabah models.Nasabah) (err error)
 	GetNasabah(nik string) (nasabah models.Nasabah, err error)
 	UpdateNasabah(nasabah models.RequestUpdateNasabah) (err error)
 	SaveFoto(nik string, fotoID string) (err error)
 	SaveDokumen(nik string, dokumenID string) (err error)
-	InsertRekening(rekening models.Rekening) (err error)
+	InsertRekening(tx *sqlx.Tx, rekening models.Rekening) (err error)
 	GetDaftarRekening(nik string) (rekening []string, err error)
 	GetRekening(nik, noRekening string) (rekening models.Rekening, err error)
-	InsertMutasi(mutasi models.Mutasi) (err error)
+	InsertMutasi(tx *sqlx.Tx, mutasi models.Mutasi) (err error)
 	GetMutasi(noRekening string, limit, offset int) (mutasi []models.Mutasi, err error)
-	UpdateSaldo(noRekening string, nominal float64) (err error)
+	UpdateSaldo(tx *sqlx.Tx, noRekening string, nominal float64) (err error)
 }
 
 type TabunganRepo struct {
@@ -57,9 +58,17 @@ func (t *TabunganRepo) initDatabase() {
 	t.db.MustExec(SQL)
 }
 
-func (t *TabunganRepo) InsertNasabah(nasabah models.Nasabah) (err error) {
+func (t *TabunganRepo) StartTransaction() (tx *sqlx.Tx, err error) {
+	tx, err = t.db.Beginx()
+	if err != nil {
+		t.log.WithField("error", err.Error()).Error("begin transaction error")
+	}
+	return
+}
+
+func (t *TabunganRepo) InsertNasabah(tx *sqlx.Tx, nasabah models.Nasabah) (err error) {
 	SQL := "INSERT INTO nasabah VALUES (:nik, :nama, :alamat_ktp, :alamat_domisili, :jenis_kelamin, :tanggal_lahir, :foto_id, :dokumen_id)"
-	_, err = t.db.NamedExec(SQL, nasabah)
+	_, err = tx.NamedExec(SQL, nasabah)
 	if err != nil {
 		t.log.WithFields(logrus.Fields{
 			"nik":             nasabah.NIK,
@@ -127,9 +136,9 @@ func (t *TabunganRepo) SaveDokumen(nik string, dokumenID string) (err error) {
 	return
 }
 
-func (t *TabunganRepo) InsertRekening(rekening models.Rekening) (err error) {
+func (t *TabunganRepo) InsertRekening(tx *sqlx.Tx, rekening models.Rekening) (err error) {
 	SQL := "INSERT INTO rekening VALUES (:nik, :no_rekening, :saldo)"
-	_, err = t.db.NamedExec(SQL, rekening)
+	_, err = tx.NamedExec(SQL, rekening)
 	if err != nil {
 		t.log.WithFields(logrus.Fields{
 			"nik":         rekening.NIK,
@@ -166,7 +175,7 @@ func (t *TabunganRepo) GetRekening(nik, noRekening string) (rekening models.Reke
 	return
 }
 
-func (t *TabunganRepo) InsertMutasi(mutasi models.Mutasi) (err error) {
+func (t *TabunganRepo) InsertMutasi(tx *sqlx.Tx, mutasi models.Mutasi) (err error) {
 	SQL := "INSERT INTO mutasi VALUES (:transaksi_id, :waktu, :jenis_mutasi, :no_rekening, :nominal, :saldo_awal, :saldo_akhir)"
 	_, err = t.db.NamedExec(SQL, mutasi)
 	if err != nil {
@@ -198,7 +207,7 @@ func (t *TabunganRepo) GetMutasi(noRekening string, limit, offset int) (mutasi [
 	return
 }
 
-func (t *TabunganRepo) UpdateSaldo(noRekening string, nominal float64) (err error) {
+func (t *TabunganRepo) UpdateSaldo(tx *sqlx.Tx, noRekening string, nominal float64) (err error) {
 	SQL := "UPDATE rekening SET saldo = saldo + $1 WHERE no_rekening = $2"
 	_, err = t.db.Exec(SQL, nominal, noRekening)
 	if err != nil {

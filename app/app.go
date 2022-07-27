@@ -13,13 +13,14 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jinzhu/copier"
+	"github.com/jmoiron/sqlx"
 	"github.com/sirupsen/logrus"
 )
 
 type TabunganAppInterface interface {
 	RegistrasiNasabah(request models.RequestRegistrasiNasabah) (rekening models.Rekening, err error)
 	UpdateNasabah(nik string, request models.RequestUpdateNasabah) (err error)
-	PembukaanRekening(nik string) (rekening models.Rekening, err error)
+	PembukaanRekening(tx *sqlx.Tx, nik string) (rekening models.Rekening, err error)
 	GetNasabah(nik string) (nasabah models.Nasabah, err error)
 	GetDaftarRekening(nik string) (rekening []string, err error)
 	GetRekening(nik, noRekening string) (rekening models.Rekening, err error)
@@ -40,20 +41,21 @@ type TabunganApp struct {
 func (t *TabunganApp) RegistrasiNasabah(request models.RequestRegistrasiNasabah) (rekening models.Rekening, err error) {
 	var nasabah models.Nasabah
 	copier.Copy(&nasabah, request)
-	err = t.repo.InsertNasabah(nasabah)
+	tx, err := t.repo.StartTransaction()
 	if err != nil {
-		err = fmt.Errorf("registrasi nasabah gagal")
+		err = fmt.Errorf("registrasi nasabah error")
 		t.log.WithFields(logrus.Fields{
-			"nik":             nasabah.NIK,
+			"nik":             request.NIK,
 			"nama":            nasabah.Nama,
 			"alamat_ktp":      nasabah.AlamatKTP,
 			"alamat_domisili": nasabah.AlamatDomisili,
 			"jenis_kelamin":   nasabah.JenisKelamin,
 			"tanggal_lahir":   nasabah.TanggalLahir,
 		}).Warn(err.Error())
+		tx.Rollback()
 		return
 	}
-	rekening, err = t.PembukaanRekening(nasabah.NIK)
+	err = t.repo.InsertNasabah(tx, nasabah)
 	if err != nil {
 		err = fmt.Errorf("registrasi nasabah gagal")
 		t.log.WithFields(logrus.Fields{
@@ -64,7 +66,23 @@ func (t *TabunganApp) RegistrasiNasabah(request models.RequestRegistrasiNasabah)
 			"jenis_kelamin":   nasabah.JenisKelamin,
 			"tanggal_lahir":   nasabah.TanggalLahir,
 		}).Warn(err.Error())
+		tx.Rollback()
+		return
 	}
+	rekening, err = t.PembukaanRekening(tx, nasabah.NIK)
+	if err != nil {
+		err = fmt.Errorf("registrasi nasabah gagal")
+		t.log.WithFields(logrus.Fields{
+			"nik":             nasabah.NIK,
+			"nama":            nasabah.Nama,
+			"alamat_ktp":      nasabah.AlamatKTP,
+			"alamat_domisili": nasabah.AlamatDomisili,
+			"jenis_kelamin":   nasabah.JenisKelamin,
+			"tanggal_lahir":   nasabah.TanggalLahir,
+		}).Warn(err.Error())
+		tx.Rollback()
+	}
+	tx.Commit()
 	return
 }
 
@@ -83,11 +101,11 @@ func (t *TabunganApp) UpdateNasabah(nik string, request models.RequestUpdateNasa
 	return
 }
 
-func (t *TabunganApp) PembukaanRekening(nik string) (rekening models.Rekening, err error) {
+func (t *TabunganApp) PembukaanRekening(tx *sqlx.Tx, nik string) (rekening models.Rekening, err error) {
 	rekening.NIK = nik
 	rekening.NoRekening = genNoRekening()
 	rekening.Saldo = 0.0
-	err = t.repo.InsertRekening(rekening)
+	err = t.repo.InsertRekening(tx, rekening)
 	if err != nil {
 		err = fmt.Errorf("pembukaan rekening gagal")
 		t.log.WithFields(logrus.Fields{
@@ -148,8 +166,19 @@ func (t *TabunganApp) GetMutasi(noRekening string, page, show int) (mutasi []mod
 }
 
 func (t *TabunganApp) TarikDana(nik, noRekening string, nominal float64) (saldoAkhir float64, err error) {
+	tx, err := t.repo.StartTransaction()
+	if err != nil {
+		err = fmt.Errorf("tarik dana nasabah error")
+		t.log.WithFields(logrus.Fields{
+			"no_rekening": noRekening,
+			"nominal":     nominal,
+		}).Warn(err.Error())
+		tx.Rollback()
+		return
+	}
 	rekening, err := t.GetRekening(nik, noRekening)
 	if err != nil {
+		tx.Rollback()
 		return
 	}
 	if nominal > rekening.Saldo {
@@ -159,10 +188,11 @@ func (t *TabunganApp) TarikDana(nik, noRekening string, nominal float64) (saldoA
 			"saldo":       rekening.Saldo,
 			"nominal":     nominal,
 		}).Warn("tarik dana gagal")
+		tx.Rollback()
 		return
 	}
 	saldoAkhir = rekening.Saldo - nominal
-	err = t.repo.UpdateSaldo(noRekening, -nominal)
+	err = t.repo.UpdateSaldo(tx, noRekening, -nominal)
 	if err != nil {
 		err = fmt.Errorf("tarik dana rekening error")
 		t.log.WithFields(logrus.Fields{
@@ -170,19 +200,35 @@ func (t *TabunganApp) TarikDana(nik, noRekening string, nominal float64) (saldoA
 			"saldo":       rekening.Saldo,
 			"nominal":     nominal,
 		}).Warn("tarik dana gagal")
+		tx.Rollback()
 		return
 	}
-	err = t.insertMutasi(noRekening, "D", nominal, rekening.Saldo, saldoAkhir)
+	err = t.insertMutasi(tx, noRekening, "D", nominal, rekening.Saldo, saldoAkhir)
+	if err != nil {
+		tx.Rollback()
+	}
+	tx.Commit()
 	return
 }
 
 func (t *TabunganApp) SetorDana(nik, noRekening string, nominal float64) (saldoAkhir float64, err error) {
+	tx, err := t.repo.StartTransaction()
+	if err != nil {
+		err = fmt.Errorf("setor dana nasabah error")
+		t.log.WithFields(logrus.Fields{
+			"no_rekening": noRekening,
+			"nominal":     nominal,
+		}).Warn(err.Error())
+		tx.Rollback()
+		return
+	}
 	rekening, err := t.GetRekening(nik, noRekening)
 	if err != nil {
+		tx.Rollback()
 		return
 	}
 	saldoAkhir = rekening.Saldo + nominal
-	err = t.repo.UpdateSaldo(noRekening, nominal)
+	err = t.repo.UpdateSaldo(tx, noRekening, nominal)
 	if err != nil {
 		err = fmt.Errorf("tarik dana rekening error")
 		t.log.WithFields(logrus.Fields{
@@ -190,9 +236,14 @@ func (t *TabunganApp) SetorDana(nik, noRekening string, nominal float64) (saldoA
 			"saldo":       rekening.Saldo,
 			"nominal":     nominal,
 		})
+		tx.Rollback()
 		return
 	}
-	err = t.insertMutasi(noRekening, "C", nominal, rekening.Saldo, saldoAkhir)
+	err = t.insertMutasi(tx, noRekening, "C", nominal, rekening.Saldo, saldoAkhir)
+	if err != nil {
+		tx.Rollback()
+	}
+	tx.Commit()
 	return
 }
 
@@ -232,7 +283,7 @@ func (t *TabunganApp) SaveDoc(file io.Reader, filename, nik string) (err error) 
 	return
 }
 
-func (t *TabunganApp) insertMutasi(noRekening, jenisMutasi string, nominal, saldoAwal, saldoAkhir float64) (err error) {
+func (t *TabunganApp) insertMutasi(tx *sqlx.Tx, noRekening, jenisMutasi string, nominal, saldoAwal, saldoAkhir float64) (err error) {
 	mutasi := models.Mutasi{
 		TransaksiID: genID(),
 		Waktu:       time.Now().String(),
@@ -242,7 +293,7 @@ func (t *TabunganApp) insertMutasi(noRekening, jenisMutasi string, nominal, sald
 		SaldoAwal:   saldoAwal,
 		SaldoAkhir:  saldoAkhir,
 	}
-	err = t.repo.InsertMutasi(mutasi)
+	err = t.repo.InsertMutasi(tx, mutasi)
 	if err != nil {
 		err = fmt.Errorf("pencatatan transaksi gagal")
 		t.log.WithFields(logrus.Fields{
@@ -289,7 +340,8 @@ func (t *TabunganApp) saveFile(file io.Reader, folder, filename string) (id stri
 }
 
 func genNoRekening() (noRekening string) {
-	noRekening = strconv.Itoa(10000000 + rand.Intn(89999999))
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	noRekening = strconv.Itoa(10000000 + r.Intn(89999999))
 	return
 }
 
